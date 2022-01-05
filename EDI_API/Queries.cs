@@ -40,8 +40,6 @@ namespace EDI_API
 
             connection.Open();
 
-            //Console.WriteLine(myQuery);
-
             command = new SqlCommand(myQuery, connection);
 
             returnedReader = command.ExecuteReader();
@@ -94,59 +92,46 @@ namespace EDI_API
 
             connection = new SqlConnection(DatabaseConnection.GetALCS());
 
-            //myQuery = @"SELECT a.cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, dproddate, ddatecreated, dtimestamp,
-            //            cfacility, ctpcode, cshippernum, creferencenum, b.cpartsnum, cshipserial, cserial
-            //            FROM
-            //            ( 
-	           //             SELECT cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, cmfgloc, dproddate, ddatecreated, dtimestamp
-	           //             FROM lsLabels
-            //            )a
-            //            LEFT JOIN
-            //            (
-            //                SELECT a.cfacility, a.ctpcode, a.cpartsnum, a.cshippernum, a.creferencenum, dshipdate, dshiptime, cshipserial, cserial
-            //                FROM EDI.dbo.Shipping_Results a, EDI.dbo.Shipping_Result_Details b
-            //                WHERE a.cfacility = b.cfacility AND a.cshippernum = b.cshippernum AND a.creferencenum = b.creferencenum AND a.ctpcode = b.ctpcode AND a.cpartsnum = b.cpartsnum
-            //            )b ON cserialnumber = cserial
-            //            WHERE cmfgloc = '" + facility + "' ";
-
             myQuery = @"SELECT a.cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, dproddate, ddatecreated, dtimestamp,
-                       cfacility, ctpcode, cshippernum, creferencenum, b.cpartsnum, cshipserial, cserial
-                       FROM OPENQUERY(srv04, 'SELECT cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, cmfgloc, dproddate, ddatecreated, dtimestamp
-					   FROM Topre_Labeling.dbo.lsLabels
-                       WHERE cmfgloc = ''" + facility + "'' ";
+                        cfacility, ctpcode, cshippernum, creferencenum, b.cpartsnum, cshipserial, cserial
+                        FROM
+                        (
+                                SELECT cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, cmfgloc, dproddate, ddatecreated, dtimestamp
+                                FROM srv04.Topre_Labeling.dbo.lsLabels
+		                        WHERE cmfgloc = '" + facility + "' ";
 
             // Handle partNum
             if (partNum != null)
             {
-                myQuery += "AND cpartsnum = ''" + partNum + "'' ";
+                myQuery += "AND cpartsnum = '" + partNum + "' ";
             }
 
             // Handle custSerial
             if (custSerial != null)
             {
-                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cserialnumber = (SELECT cserial FROM [EDI].[dbo].Shipping_Result_Details WHERE cshipserial = ''" + custSerial + "''))) ";
+                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cserialnumber = (SELECT cserial FROM [EDI].[dbo].Shipping_Result_Details WHERE cshipserial = '" + custSerial + "'))) ";
             }
 
             // Handle topSerial
             if (topSerial != null)
             {
-                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cserialnumber =  ''" + topSerial + "'')) ";
+                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cserialnumber =  '" + topSerial + "')) ";
             }
 
             // Handle startDate and endDate
             if (startDate != null && endDate != null)
             {
-                myQuery += "AND dproddate >= ''" + startDate + "'' AND dproddate <= ''" + endDate + "'' ";
+                myQuery += "AND dproddate >= '" + startDate + "' AND dproddate <= '" + endDate + "' ";
             }
 
-            myQuery += @" ')a
-                       LEFT JOIN
-                       (
-                           SELECT a.cfacility, a.ctpcode, a.cpartsnum, a.cshippernum, a.creferencenum, dshipdate, dshiptime, cshipserial, cserial
-                           FROM Shipping_Results a, Shipping_Result_Details b
-                           WHERE a.cfacility = b.cfacility AND a.cshippernum = b.cshippernum AND a.creferencenum = b.creferencenum AND a.ctpcode = b.ctpcode AND a.cpartsnum = b.cpartsnum
-                       )b ON cserialnumber = cserial
-                       WHERE cmfgloc = '" + facility + "' ";
+            myQuery += @"  )a
+                            LEFT JOIN
+                            (
+                                SELECT a.cfacility, a.ctpcode, a.cpartsnum, a.cshippernum, a.creferencenum, dshipdate, dshiptime, cshipserial, cserial
+                                FROM EDI.dbo.Shipping_Results a, EDI.dbo.Shipping_Result_Details b
+                                WHERE a.cfacility = b.cfacility AND a.cshippernum = b.cshippernum AND a.creferencenum = b.creferencenum AND a.ctpcode = b.ctpcode AND a.cpartsnum = b.cpartsnum
+                            )b ON cserialnumber = cserial
+                            WHERE cmfgloc = '" + facility + "' ";
 
             // Handle shipperNum
             if (shipperNum != null)
@@ -167,8 +152,6 @@ namespace EDI_API
             }
 
             myQuery += "ORDER BY cserialnumber";
-
-            Console.WriteLine(myQuery);
 
             connection.Open();
 
@@ -219,26 +202,24 @@ namespace EDI_API
             connection = new SqlConnection(DatabaseConnection.GetALCS());
 
             myQuery = @"SELECT a.cfacility, a.ctradingpartner, a.cpartsnum, a.cdestination, a.cdockcode, a.creferencenum, a.crecordtype, 
-a.dreqdate, a.dreqtime, a.nreqqty, a.nnetqty , b.creleasenum, b.dreleasedate, ntotalshipped, dlatestdateshipped, 
-CASE 
-	WHEN a.nnetqty = ntotalshipped AND ntotalshipped = a.nreqqty THEN 'SHIPPING DOCUMENTS NOT PRINTED' 
-	WHEN a.nnetqty = 0 AND ntotalshipped = 0 THEN 'ASN NOT TRANSMITTED'
-	WHEN a.nreqqty = a.nnetqty AND ntotalshipped = 0 THEN 'NOT SHIPPED'
-	ELSE 'ASN SENT' END [cshipperstatus]
-FROM Sales_Requirements a, Sales_Requirements_Origination b
-LEFT JOIN
-( 
-	SELECT cfacility, ctradingpartner, cdestination, cpartsnum, creferencenum, nshipqty, SUM(nshipqty) AS ntotalshipped, MAX(dshipdate) AS dlatestdateshipped
-	FROM Shipping_Results 
-	GROUP BY cfacility, ctradingpartner, cdestination, cpartsnum, creferencenum, nshipqty
-)c
-ON b.cfacility = c.cfacility AND b.ctradingpartner = c.ctradingpartner AND b.cdestination = c.cdestination AND b.cpartsnum = c.cpartsnum AND b.creferencenum = c.creferencenum
-WHERE a.cfacility = b.cfacility AND a.ctradingpartner = b.ctradingpartner AND a.cdestination = b.cdestination AND a.cpartsnum = b.cpartsnum AND a.creferencenum = b.creferencenum
-AND a.ctpcode <> 't1' AND a.ctpcode <> 't2' AND a.ctpcode <> 't3' AND a.ctpcode <> 't4' AND a.nnetqty + ntotalshipped != a.nreqqty AND a.cfacility = '" + facility + "' ";
+                        a.dreqdate, a.dreqtime, a.nreqqty, a.nnetqty , b.creleasenum, b.dreleasedate, ntotalshipped, dlatestdateshipped, 
+                        CASE 
+	                        WHEN a.nnetqty = ntotalshipped AND ntotalshipped = a.nreqqty THEN 'SHIPPING DOCUMENTS NOT PRINTED' 
+	                        WHEN a.nnetqty = 0 AND ntotalshipped = 0 THEN 'ASN NOT TRANSMITTED'
+	                        WHEN a.nreqqty = a.nnetqty AND ntotalshipped = 0 THEN 'NOT SHIPPED'
+	                        ELSE 'ASN SENT' END [cshipperstatus]
+                        FROM Sales_Requirements a, Sales_Requirements_Origination b
+                        LEFT JOIN
+                        ( 
+	                        SELECT cfacility, ctradingpartner, cdestination, cpartsnum, creferencenum, nshipqty, SUM(nshipqty) AS ntotalshipped, MAX(dshipdate) AS dlatestdateshipped
+	                        FROM Shipping_Results 
+	                        GROUP BY cfacility, ctradingpartner, cdestination, cpartsnum, creferencenum, nshipqty
+                        )c
+                        ON b.cfacility = c.cfacility AND b.ctradingpartner = c.ctradingpartner AND b.cdestination = c.cdestination AND b.cpartsnum = c.cpartsnum AND b.creferencenum = c.creferencenum
+                        WHERE a.cfacility = b.cfacility AND a.ctradingpartner = b.ctradingpartner AND a.cdestination = b.cdestination AND a.cpartsnum = b.cpartsnum AND a.creferencenum = b.creferencenum
+                        AND a.ctpcode <> 't1' AND a.ctpcode <> 't2' AND a.ctpcode <> 't3' AND a.ctpcode <> 't4' AND a.nnetqty + ntotalshipped != a.nreqqty AND a.cfacility = '" + facility + "' ";
 
             connection.Open();
-
-            //Console.WriteLine(myQuery);
 
             command = new SqlCommand(myQuery, connection);
 

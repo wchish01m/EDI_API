@@ -1,11 +1,8 @@
-﻿using EDI_API.Excel_Creator;
-using EDI_API.Models;
+﻿using EDI_API.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace EDI_API.Controllers
@@ -20,10 +17,22 @@ namespace EDI_API.Controllers
             return Queries.GetResults(facility, startDate, endDate);
         }
 
-        [HttpGet("BuildSpreadsheet")]
-        public void getSheet()
+        [HttpGet("BuildFile/{facility}/{startDate}/{endDate}")]
+        public string BuildFile(string facility, string startDate, string endDate)
         {
-            Sheet_Creation.BuildSpreadSheet();
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            Sheet_Creation.BuildSpreadSheet(facility, startDate, endDate, timestamp);
+
+            string filePath = @"~\File_Export\".Replace(@"~\", "") + "shipping_results_" + timestamp + ".xlsx";
+            return filePath;
+        }
+
+        [HttpGet("Download/{filePath}")]
+        public async Task<ActionResult> Download(string filePath)
+        {
+            byte[] bytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            System.IO.File.Delete(filePath);
+            return File(bytes, "application/octet-stream", Path.GetFileName(filePath));
         }
     }
 }

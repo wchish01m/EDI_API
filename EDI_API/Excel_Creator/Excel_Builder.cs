@@ -1,59 +1,42 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Drawing.Spreadsheet;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using EDI_API.Excel_Creator;
+using Microsoft.VisualBasic;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.VisualBasic;
-using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Drawing.Spreadsheet;
-using oNonVisDrawProp = DocumentFormat.OpenXml.Drawing.Spreadsheet.NonVisualDrawingProperties;
-using oNonVisDrawPicProp = DocumentFormat.OpenXml.Drawing.Spreadsheet.NonVisualPictureDrawingProperties;
-using oNonVisPicProp = DocumentFormat.OpenXml.Drawing.Spreadsheet.NonVisualPictureProperties;
-using oStretch = DocumentFormat.OpenXml.Drawing.Stretch;
-using oPicLocks = DocumentFormat.OpenXml.Drawing.PictureLocks;
-using oBlipFill = DocumentFormat.OpenXml.Drawing.Spreadsheet.BlipFill;
+using System.Text.RegularExpressions;
 using oBlip = DocumentFormat.OpenXml.Drawing.Blip;
-using oTransoform2D = DocumentFormat.OpenXml.Drawing.Transform2D;
-using oOffset = DocumentFormat.OpenXml.Drawing.Offset;
+using oBlipFill = DocumentFormat.OpenXml.Drawing.Spreadsheet.BlipFill;
 using oExtents = DocumentFormat.OpenXml.Drawing.Extents;
-using oShapeProperties = DocumentFormat.OpenXml.Drawing.Spreadsheet.ShapeProperties;
-using oPresetGeometry = DocumentFormat.OpenXml.Drawing.PresetGeometry;
+using oNonVisDrawPicProp = DocumentFormat.OpenXml.Drawing.Spreadsheet.NonVisualPictureDrawingProperties;
+using oNonVisDrawProp = DocumentFormat.OpenXml.Drawing.Spreadsheet.NonVisualDrawingProperties;
+using oNonVisPicProp = DocumentFormat.OpenXml.Drawing.Spreadsheet.NonVisualPictureProperties;
+using oOffset = DocumentFormat.OpenXml.Drawing.Offset;
+using oPicLocks = DocumentFormat.OpenXml.Drawing.PictureLocks;
 using oPicture = DocumentFormat.OpenXml.Drawing.Spreadsheet.Picture;
 using oPosition = DocumentFormat.OpenXml.Drawing.Spreadsheet.Position;
-using System.Text.RegularExpressions;
-using EDI_API.Excel_Creator;
-
-// Imports eCell_Font
-// Imports eCell_FillColor
-// Imports eCell_Borders
-// Imports eCell_TextFormat
-// Imports eCell_Style
-// Imports eCell
-// Imports eColumn
-// Imports eSheet
+using oPresetGeometry = DocumentFormat.OpenXml.Drawing.PresetGeometry;
+using oShapeProperties = DocumentFormat.OpenXml.Drawing.Spreadsheet.ShapeProperties;
+using oStretch = DocumentFormat.OpenXml.Drawing.Stretch;
+using oTransoform2D = DocumentFormat.OpenXml.Drawing.Transform2D;
 
 public class Excel_Builder
 {
     public static void create_Document(string filepath, List<eSheet> sSheets)
     {
-        // Create a spreadsheet document by supplying the filepath.
-        // By default, AutoSave = true, Editable = true, and Type = xlsx.
-        // Dim start As Date
-        // Dim finish As Date
+        Console.WriteLine("1st IN CREATE_DOC: " + DateTime.Now);
         SpreadsheetDocument ssDocument = SpreadsheetDocument.Create(filepath, SpreadsheetDocumentType.Workbook);
 
         // Add a WorkbookPart to the document.
         WorkbookPart wbPart = ssDocument.AddWorkbookPart();
         wbPart.Workbook = new Workbook();
-        // start = Now
         WorkbookStylesPart wbStyles = wbPart.AddNewPart<WorkbookStylesPart>();
         wbStyles.Stylesheet = createStyleSheet(sSheets[0].fonts, sSheets[0].fills, sSheets[0].borders, sSheets[0].textFormats, sSheets[0].styles);
         wbStyles.Stylesheet.Save();
-        // finish = Now
-
-        // My.Computer.FileSystem.WriteAllText("\\srv04\errorLogs$\openXML_Log.txt",
-        // filepath & vbCrLf & "Stylesheet Creation, Start= " & start & ", End= " & finish & ", seconds= " & DateDiff(DateInterval.Second, start, finish) & vbCrLf, True)
 
         // Add Sheets to the Workbook.
         Sheets wsheets = ssDocument.WorkbookPart.Workbook.AppendChild<Sheets>(new Sheets());
@@ -65,60 +48,44 @@ public class Excel_Builder
             Worksheet work_Sheet = new Worksheet();
             SheetData sData = new SheetData();
 
-            Columns columns = new Columns();
-            // start = Now
+            Columns columns = new();
+
             for (int x = 0; x <= sSheets[(int)s].columns.Count - 1; x++)
+            {
                 columns.Append(createColumnData(sSheets[(int)s].columns[x].Index, sSheets[(int)s].columns[x].Width, true));
-            // finish = Now
-
-            // My.Computer.FileSystem.WriteAllText("\\srv04\errorLogs$\openXML_Log.txt",
-            // "Column Creation, Start= " & start & ", End= " & finish & ", seconds= " & DateDiff(DateInterval.Second, start, finish) & vbCrLf, True)
-
+            }
+            Console.WriteLine("INSIDE 1ST FOR IN CREATE_DOC: " + DateTime.Now);
             work_Sheet.Append(columns);
             work_Sheet.Append(sData);
 
             wsPart.Worksheet = work_Sheet;
 
             // Append a new worksheet and associate it with the workbook.
-            Sheet wsheet = new Sheet();
+            Sheet wsheet = new();
             wsheet.Id = ssDocument.WorkbookPart.GetIdOfPart(wsPart);
             wsheet.SheetId = s + 1;
             string sName = sSheets[(int)s].name;
 
             if (sName == "DEFAULT")
+            {
                 sName = "Sheet" + (s + 1);
+            }
 
             wsheet.Name = sName;
-
             wsheets.Append(wsheet);
-
-
-            // start = Now
-            // For x As Integer = 0 To sSheets(s).cells.Count - 1
             InsertText(ssDocument, wsPart, sSheets[(int)s]);
-            // MsgBox(eCells(x).merged)
 
-            // Next
-            // finish = Now
-
-            // My.Computer.FileSystem.WriteAllText("\\srv04\errorLogs$\openXML_Log.txt",
-            // "Cells Creation, Start= " & start & ", End= " & finish & ", seconds= " & DateDiff(DateInterval.Second, start, finish) & vbCrLf, True)
-
-            // start = Now
             if (sSheets[(int)s].images.Count > 0)
             {
                 for (int x = 0; x <= sSheets[(int)s].images.Count - 1; x++)
                     addImageToSheet(wsPart, wsPart.Worksheet, sSheets[(int)s].images[x]);
             }
-            // finish = Now
 
-            // My.Computer.FileSystem.WriteAllText("\\srv04\errorLogs$\openXML_Log.txt",
-            // "Image Creation, Start= " & start & ", End= " & finish & ", seconds= " & DateDiff(DateInterval.Second, start, finish) & vbCrLf & vbCrLf, True)
-
+            // Save the worksheet and workbook
             wsPart.Worksheet.Save();
-
             wbPart.Workbook.Save();
         }
+        Console.WriteLine("AFTER FOR IN CREATE_DOC:  " + DateTime.Now);
 
         // Close the document.
         ssDocument.Close();
@@ -126,117 +93,150 @@ public class Excel_Builder
 
     public static void InsertText(SpreadsheetDocument sDocument, WorksheetPart wsPart, eSheet sSheet)
     {
-
         // Imports (spreadSheet)
         // Get the SharedStringTablePart. If it does not exist, create a new one.
         SharedStringTablePart shareStringPart;
 
         if (sDocument.WorkbookPart.GetPartsOfType<SharedStringTablePart>().Count() > 0)
+        {
             shareStringPart = sDocument.WorkbookPart.GetPartsOfType<SharedStringTablePart>().First();
+        }
         else
+        {
             shareStringPart = sDocument.WorkbookPart.AddNewPart<SharedStringTablePart>();
-
+        }
+        Console.WriteLine("1st IN INSERT TEXT: " + DateTime.Now);
+        int totalSeconds = 0;
+        int count = 0;
         for (int x = 0; x <= sSheet.cells.Count - 1; x++)
         {
+            DateTime test = DateTime.Now;
             eCell dataCell = sSheet.cells[x];
 
             // Insert the text into the SharedStringTablePart.
-            int index = InsertSharedStringItem(dataCell.value, shareStringPart);
+            int index = 0;// InsertSharedStringItem(dataCell.value, shareStringPart);
 
             // Insert cell into the new worksheet.
             Cell sCell = InsertCellInWorksheet(dataCell.column, (uint)dataCell.row, wsPart);
 
             // To check if the cell has a formula or not
-            if (dataCell.formula == "")
+            switch (dataCell.formula)
             {
-                if (dataCell.cellType == "DEFAULT")
-                {
-                    int n;
-                    bool isNum = int.TryParse(dataCell.value, out n);
+                case "":
+                    {
+                        switch (dataCell.cellType)
+                        {
+                            case "DEFAULT":
+                                {
+                                    bool isNum = int.TryParse(dataCell.value, out int n);
 
-                    DateTime da;
-                    bool isDate = DateTime.TryParse(dataCell.value, out da);
-                    // Assign the cell value
-                    if (isNum == true)
-                    {
-                        sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
-                        sCell.CellValue = new CellValue(dataCell.value);
-                    }
-                    else if (isDate == true)
-                    {
-                        double d = DateTime.Parse(dataCell.value).ToOADate();
-                        sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
-                        sCell.CellValue = new CellValue(d);
-                    }
-                    else
-                    {
-                        sCell.CellValue = new CellValue(index.ToString());
-                        sCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
-                    }
-                }
-                else
-                    switch (dataCell.cellType)
-                    {
-                        case "NUMBER":
-                            {
-                                sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
-                                sCell.CellValue = new CellValue(dataCell.value);
-                                break;
-                            }
+                                    bool isDate = DateTime.TryParse(dataCell.value, out DateTime da);
 
-                        case "DATE":
-                            {
-                                sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
-                                double d = DateTime.Parse(dataCell.value).ToOADate();
-                                sCell.CellValue = new CellValue(d);
+                                    // Assign the cell value
+                                    switch (isNum)
+                                    {
+                                        case true:
+                                            sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
+                                            sCell.CellValue = new CellValue(dataCell.value);
+                                            break;
+                                        default:
+                                            if (isDate)
+                                            {
+                                                double d = DateTime.Parse(dataCell.value).ToOADate();
+                                                sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
+                                                sCell.CellValue = new CellValue(d);
+                                            }
+                                            else
+                                            {
+                                                index = InsertSharedStringItem(dataCell.value, shareStringPart);
+                                                sCell.CellValue = new CellValue(index.ToString());
+                                                sCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                                            }
+                                            break;
+                                    }
+                                    break;
+                                }
+                            default:
+                                switch (dataCell.cellType)
+                                {
+                                    case "NUMBER":
+                                        {
+                                            sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
+                                            sCell.CellValue = new CellValue(dataCell.value);
+                                            break;
+                                        }
+                                    case "DATE":
+                                        {
+                                            sCell.DataType = new EnumValue<CellValues>(CellValues.Number);
+                                            double d = DateTime.Parse(dataCell.value).ToOADate();
+                                            sCell.CellValue = new CellValue(d);
+                                            break;
+                                        }
+                                    case "TEXT":
+                                        {
+                                            index = InsertSharedStringItem(dataCell.value, shareStringPart);
+                                            sCell.CellValue = new CellValue(index.ToString());
+                                            sCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+                                            break;
+                                        }
+                                }
                                 break;
-                            }
-
-                        case "TEXT":
-                            {
-                                sCell.CellValue = new CellValue(index.ToString());
-                                sCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
-                                break;
-                            }
+                        }
+                        break;
+                    }
+                default:
+                    {
+                        CellFormula cFormula = new();
+                        cFormula.Text = dataCell.formula;
+                        sCell.CellFormula = cFormula;
+                        break;
                     }
             }
-            else
-            {
-                CellFormula cFormula = new CellFormula();
-                cFormula.Text = dataCell.formula;
-                sCell.CellFormula = cFormula;
-            }
-
             sCell.StyleIndex = dataCell.styleID;
-        }
-
-        // Save the new worksheet.
-        wsPart.Worksheet.Save();
-
-        for (int x = 0; x <= sSheet.cells.Count - 1; x++)
-        {
-            if (sSheet.cells[x].merged == true)
+            if (sSheet.cells[x].merged)
             {
                 styleMergedCells(sDocument, sSheet.cells[x], wsPart);
                 MergeTwoCells(sDocument, sSheet.name, sSheet.cells[x].address, sSheet.cells[x].mergedAddress, (int)sSheet.cells[x].styleID);            //!!POSSIBLE!!ERROR!!//
             }
+            count++;
+            totalSeconds += (DateTime.Now - test).Milliseconds;
         }
+        Console.WriteLine("AVG SECONDS: " + totalSeconds / count);
+        Console.WriteLine("AFTER FOR IN INSERT_TEXT: " + DateTime.Now);
+
+        // Save the new worksheet.
+        wsPart.Worksheet.Save();
+        Console.WriteLine("AFTER SAVE: " + DateTime.Now);
+        //for (int x = 0; x <= sSheet.cells.Count - 1; x++)
+        //{
+        //    if (sSheet.cells[x].merged == true)
+        //    {
+        //        styleMergedCells(sDocument, sSheet.cells[x], wsPart);
+        //        MergeTwoCells(sDocument, sSheet.name, sSheet.cells[x].address, sSheet.cells[x].mergedAddress, (int)sSheet.cells[x].styleID);            //!!POSSIBLE!!ERROR!!//
+        //    }
+        //}
+        Console.WriteLine("LAST IN INSET_TEXT: " + DateTime.Now);
     }
 
     public static int InsertSharedStringItem(string text, SharedStringTablePart shareStringPart)
     {
         // If the part does not contain a SharedStringTable, create one.
-        if ((shareStringPart.SharedStringTable == null))
+        if (shareStringPart.SharedStringTable == null)
+        {
             shareStringPart.SharedStringTable = new SharedStringTable();
+        }
 
         int i = 0;
 
         // Iterate through all the items in the SharedStringTable. If the text already exists, return its index.
         foreach (SharedStringItem item in shareStringPart.SharedStringTable.Elements<SharedStringItem>())
         {
-            if ((item.InnerText == text))
+            if (item.InnerText == text)
+            {
                 return i;
-            i = (i + 1);
+            }
+
+            i += 1;
         }
 
         // The text does not exist in the part. Create the SharedStringItem and return its index.
@@ -261,9 +261,6 @@ public class Excel_Builder
                     mCell.styleID = styleCell.styleID;
                     // Call InsertText(ssDocument, wsPart, mCell)
 
-                    // Insert the text into the SharedStringTablePart.
-                    // Dim index As Integer = InsertSharedStringItem(mCell.value, shareStringPart)
-
                     // Insert cell into the new worksheet.
                     Cell sCell = InsertCellInWorksheet(mCell.column, (uint)mCell.row, wsPart);
                     sCell.StyleIndex = mCell.styleID;
@@ -280,7 +277,6 @@ public class Excel_Builder
         int a;
         int b;
         string columnLetters = "";
-        a = columnNum;
         while (columnNum > 0)
         {
             a = (int)((columnNum - 1) / (double)26);
@@ -316,14 +312,14 @@ public class Excel_Builder
         {
             // Cells must be in sequential order according to CellReference. Determine where to insert the new cell.
             Cell refCell = null/* TODO Change to default(_) if this is not a reference type */;
-            foreach (Cell cell in row.Elements<Cell>())
-            {
-                if ((string.Compare(cell.CellReference.Value, cellReference, true) > 0))
-                {
-                    refCell = cell;
-                    break;
-                }
-            }
+            //foreach (Cell cell in row.Elements<Cell>())
+            //{
+            //    if ((string.Compare(cell.CellReference.Value, cellReference, true) > 0))
+            //    {
+            //        refCell = cell;
+            //        break;
+            //    }
+            //}
 
             Cell newCell = new Cell();
             newCell.CellReference = cellReference;
@@ -350,14 +346,18 @@ public class Excel_Builder
         CreateSpreadsheetCellIfNotExist(wSheet, cell2Name, styleID);
 
         MergeCells mergeCells;
-        if ((wSheet.Elements<MergeCells>().Count() > 0))
+        if (wSheet.Elements<MergeCells>().Count() > 0)
+        {
             mergeCells = wSheet.Elements<MergeCells>().First();
+        }
         else
         {
             mergeCells = new MergeCells();
             // Insert a MergeCells object into the specified position.
-            if ((wSheet.Elements<CustomSheetView>().Count() > 0))
+            if (wSheet.Elements<CustomSheetView>().Count() > 0)
+            {
                 wSheet.InsertAfter(mergeCells, wSheet.Elements<CustomSheetView>().First());
+            }
             else if ((wSheet.Elements<DataConsolidate>().Count() > 0))
                 wSheet.InsertAfter(mergeCells, wSheet.Elements<DataConsolidate>().First());
             else if ((wSheet.Elements<SortState>().Count() > 0))
@@ -469,21 +469,30 @@ public class Excel_Builder
 
         for (int x = 0; x <= eFonts.Count - 1; x++)
         {
-            DocumentFormat.OpenXml.Spreadsheet.Font fnt = new DocumentFormat.OpenXml.Spreadsheet.Font();
-            FontName fntName = new FontName();
-            fntName.Val = eFonts[x].name;
-            FontSize fntSize = new FontSize();
-            fntSize.Val = eFonts[x].size;
-            fnt.Color = new DocumentFormat.OpenXml.Spreadsheet.Color();
-            fnt.Color.Rgb = HexBinaryValue.FromString(eFonts[x].clr);
-            if (eFonts[x].bold == true)
+            Font fnt = new();
+            FontName fntName = new()
+            {
+                Val = eFonts[x].name
+            };
+            FontSize fntSize = new()
+            {
+                Val = eFonts[x].size
+            };
+            fnt.Color = new Color
+            {
+                Rgb = HexBinaryValue.FromString(eFonts[x].clr)
+            };
+            if (eFonts[x].bold)
+            {
                 fnt.Bold = new Bold();
+            }
+
             fnt.FontName = fntName;
             fnt.FontSize = fntSize;
             fnts.Append(fnt);
         }
 
-        fnts.Count = System.Convert.ToUInt32(fnts.ChildElements.Count);
+        fnts.Count = Convert.ToUInt32(fnts.ChildElements.Count);
 
 
         // ##########################################################################################################################
@@ -1058,7 +1067,7 @@ public class Excel_Builder
             cFormats.Append(cFormat);
         }
 
-        cFormats.Count = System.Convert.ToUInt32(cFormats.ChildElements.Count);
+        cFormats.Count = Convert.ToUInt32(cFormats.ChildElements.Count);
 
 
         // ##########################################################################################################################

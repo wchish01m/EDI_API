@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-public class eColumn
+﻿public class eColumn
 {
     private int columnNum = 1;
     private int columnWidth = 10;
