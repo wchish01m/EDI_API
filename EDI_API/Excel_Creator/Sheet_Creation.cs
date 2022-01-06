@@ -167,7 +167,6 @@ namespace EDI_API
 
         public static void BuildSpreadSheet(string facility, string startDate, string endDate, string timestamp)
         {
-            Console.WriteLine("1st: " + DateTime.Now);
             // Variables for database connections and commands
             SqlConnection cn;
             string myQuery;
@@ -305,7 +304,6 @@ namespace EDI_API
                 }
                 row += 1;
             }
-            Console.WriteLine("AFTER FOR LOOP IN BUILDSPREADSHEET: " + DateTime.Now);
 
             // Close the datareader
             returned.Close();
@@ -316,7 +314,6 @@ namespace EDI_API
             wbSheets.Add(excelFile);
 
             create_Document(filePath, wbSheets);
-            Console.WriteLine("AFTER CREATE_DOC: " + DateTime.Now + "\n");
         }
     }
 }

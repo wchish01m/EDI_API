@@ -1,4 +1,5 @@
 ﻿using EDI_API.Excel_Creator;
+using System;
 using System.Collections.Generic;
 
 public class eSheet
@@ -13,9 +14,14 @@ public class eSheet
     private int maxColumn;
     private List<eImage> sheet_Images = new List<eImage>();
     private string sheetName = "DEFAULT";
+    private int stringIndex = 0;
+
+    public Dictionary<string, int> StringMap { get; set; }
 
     public eSheet()
     {
+        this.StringMap = new Dictionary<string, int>();
+
         eCell_Font cellFont = new eCell_Font();
         sheet_fonts.Add(cellFont);
 
@@ -133,7 +139,18 @@ public class eSheet
     {
         set
         {
+
             sheet_cells.Add(value);
+
+            DateTime dt;
+            int val;
+            if (!DateTime.TryParse(value.value, out dt) && !Int32.TryParse(value.value, out val))
+            {
+                if (!this.StringMap.ContainsKey(value.value))
+                {
+                    this.StringMap.Add(value.value, this.stringIndex++);
+                }
+            }
         }
     }
 

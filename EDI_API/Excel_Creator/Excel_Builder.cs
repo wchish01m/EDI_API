@@ -28,7 +28,6 @@ public class Excel_Builder
 {
     public static void create_Document(string filepath, List<eSheet> sSheets)
     {
-        Console.WriteLine("1st IN CREATE_DOC: " + DateTime.Now);
         SpreadsheetDocument ssDocument = SpreadsheetDocument.Create(filepath, SpreadsheetDocumentType.Workbook);
 
         // Add a WorkbookPart to the document.
@@ -54,7 +53,6 @@ public class Excel_Builder
             {
                 columns.Append(createColumnData(sSheets[(int)s].columns[x].Index, sSheets[(int)s].columns[x].Width, true));
             }
-            Console.WriteLine("INSIDE 1ST FOR IN CREATE_DOC: " + DateTime.Now);
             work_Sheet.Append(columns);
             work_Sheet.Append(sData);
 
@@ -85,7 +83,6 @@ public class Excel_Builder
             wsPart.Worksheet.Save();
             wbPart.Workbook.Save();
         }
-        Console.WriteLine("AFTER FOR IN CREATE_DOC:  " + DateTime.Now);
 
         // Close the document.
         ssDocument.Close();
@@ -105,9 +102,11 @@ public class Excel_Builder
         {
             shareStringPart = sDocument.WorkbookPart.AddNewPart<SharedStringTablePart>();
         }
-        Console.WriteLine("1st IN INSERT TEXT: " + DateTime.Now);
         int totalSeconds = 0;
         int count = 0;
+
+        InsertSharedStringItem(sSheet.StringMap, shareStringPart);
+
         for (int x = 0; x <= sSheet.cells.Count - 1; x++)
         {
             DateTime test = DateTime.Now;
@@ -148,8 +147,9 @@ public class Excel_Builder
                                             }
                                             else
                                             {
-                                                index = InsertSharedStringItem(dataCell.value, shareStringPart);
-                                                sCell.CellValue = new CellValue(index.ToString());
+                                                //index = InsertSharedStringItem(dataCell.value, shareStringPart);
+
+                                                sCell.CellValue = new CellValue(sSheet.StringMap[dataCell.value].ToString());
                                                 sCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
                                             }
                                             break;
@@ -174,8 +174,8 @@ public class Excel_Builder
                                         }
                                     case "TEXT":
                                         {
-                                            index = InsertSharedStringItem(dataCell.value, shareStringPart);
-                                            sCell.CellValue = new CellValue(index.ToString());
+                                            //index = InsertSharedStringItem(dataCell.value, shareStringPart);
+                                            sCell.CellValue = new CellValue(sSheet.StringMap[dataCell.value].ToString());
                                             sCell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
                                             break;
                                         }
@@ -201,12 +201,9 @@ public class Excel_Builder
             count++;
             totalSeconds += (DateTime.Now - test).Milliseconds;
         }
-        Console.WriteLine("AVG SECONDS: " + totalSeconds / count);
-        Console.WriteLine("AFTER FOR IN INSERT_TEXT: " + DateTime.Now);
 
         // Save the new worksheet.
         wsPart.Worksheet.Save();
-        Console.WriteLine("AFTER SAVE: " + DateTime.Now);
         //for (int x = 0; x <= sSheet.cells.Count - 1; x++)
         //{
         //    if (sSheet.cells[x].merged == true)
@@ -215,35 +212,43 @@ public class Excel_Builder
         //        MergeTwoCells(sDocument, sSheet.name, sSheet.cells[x].address, sSheet.cells[x].mergedAddress, (int)sSheet.cells[x].styleID);            //!!POSSIBLE!!ERROR!!//
         //    }
         //}
-        Console.WriteLine("LAST IN INSET_TEXT: " + DateTime.Now);
     }
 
-    public static int InsertSharedStringItem(string text, SharedStringTablePart shareStringPart)
+    public static void InsertSharedStringItem(Dictionary<string, int> stringMap, SharedStringTablePart shareStringPart)
     {
+
+
         // If the part does not contain a SharedStringTable, create one.
         if (shareStringPart.SharedStringTable == null)
         {
             shareStringPart.SharedStringTable = new SharedStringTable();
         }
 
-        int i = 0;
+        //int i = 0;
 
-        // Iterate through all the items in the SharedStringTable. If the text already exists, return its index.
-        foreach (SharedStringItem item in shareStringPart.SharedStringTable.Elements<SharedStringItem>())
+        //// Iterate through all the items in the SharedStringTable. If the text already exists, return its index.
+        //foreach (SharedStringItem item in shareStringPart.SharedStringTable.Elements<SharedStringItem>())
+        //{
+        //    if (item.InnerText == text)
+        //    {
+        //        return i;
+        //    }
+
+        //    i += 1;
+        //}
+
+        Dictionary<int, string> indexMap = new();
+        foreach (KeyValuePair<string, int> pair in stringMap)
         {
-            if (item.InnerText == text)
-            {
-                return i;
-            }
-
-            i += 1;
+            indexMap.Add(pair.Value, pair.Key);
         }
 
-        // The text does not exist in the part. Create the SharedStringItem and return its index.
-        shareStringPart.SharedStringTable.AppendChild(new SharedStringItem(new DocumentFormat.OpenXml.Spreadsheet.Text(text)));
+        for (int i = 0; i < indexMap.Count; i++)
+        {
+            // The text does not exist in the part. Create the SharedStringItem and return its index.
+            shareStringPart.SharedStringTable.AppendChild(new SharedStringItem(new Text(indexMap[i])));
+        }
         shareStringPart.SharedStringTable.Save();
-
-        return i;
     }
 
     public static void styleMergedCells(SpreadsheetDocument ssDocument, eCell styleCell, WorksheetPart wsPart)
@@ -325,7 +330,6 @@ public class Excel_Builder
             newCell.CellReference = cellReference;
 
             row.InsertBefore(newCell, refCell);
-            worksheet.Save();
 
             return newCell;
         }
