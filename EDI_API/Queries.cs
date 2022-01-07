@@ -98,7 +98,7 @@ namespace EDI_API
                         ([srv04],
 	                        'SELECT cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, cmfgloc, dproddate, ddatecreated, dtimestamp
                             FROM Topre_Labeling.dbo.lsLabels
-                            WHERE cmfgloc = ''TAC-AL'' ";
+                            WHERE cmfgloc = ''" + facility + "'' ";
 
             // Handle partNum
             if (partNum != null)
