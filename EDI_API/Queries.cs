@@ -92,39 +92,39 @@ namespace EDI_API
 
             connection = new SqlConnection(DatabaseConnection.GetALCS());
 
-            myQuery = @"SELECT a.cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, dproddate, ddatecreated, dtimestamp,
+            myQuery = @"SELECT T1.cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, dproddate, ddatecreated, dtimestamp,
                         cfacility, ctpcode, cshippernum, creferencenum, b.cpartsnum, cshipserial, cserial
-                        FROM
-                        (
-                                SELECT cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, cmfgloc, dproddate, ddatecreated, dtimestamp
-                                FROM srv04.Topre_Labeling.dbo.lsLabels
-		                        WHERE cmfgloc = '" + facility + "' ";
+                        FROM OPENQUERY
+                        ([srv04],
+	                        'SELECT cpartsnum, cserialnumber, cpartloc, cshift, cpkgqty, cprintedby, cmfgloc, dproddate, ddatecreated, dtimestamp
+                            FROM Topre_Labeling.dbo.lsLabels
+                            WHERE cmfgloc = ''TAC-AL'' ";
 
             // Handle partNum
             if (partNum != null)
             {
-                myQuery += "AND cpartsnum = '" + partNum + "' ";
+                myQuery += "AND cpartsnum = ''" + partNum + "'' ";
             }
 
             // Handle custSerial
             if (custSerial != null)
             {
-                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cserialnumber = (SELECT cserial FROM [EDI].[dbo].Shipping_Result_Details WHERE cshipserial = '" + custSerial + "'))) ";
+                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM Topre_Labeling.dbo.lsLabels WHERE cserialnumber = (SELECT cserial FROM [EDI].[dbo].Shipping_Result_Details WHERE cshipserial = ''" + custSerial + "''))) ";
             }
 
             // Handle topSerial
             if (topSerial != null)
             {
-                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM srv04.Topre_Labeling.dbo.lsLabels WHERE cserialnumber =  '" + topSerial + "')) ";
+                myQuery += "AND cserialnumber IN(SELECT cserialnumber FROM Topre_Labeling.dbo.lsLabels WHERE cbatchid =(SELECT cbatchid FROM Topre_Labeling.dbo.lsLabels WHERE cserialnumber =  ''" + topSerial + "'')) ";
             }
 
             // Handle startDate and endDate
             if (startDate != null && endDate != null)
             {
-                myQuery += "AND dproddate >= '" + startDate + "' AND dproddate <= '" + endDate + "' ";
+                myQuery += "AND dproddate >= ''" + startDate + "'' AND dproddate <= ''" + endDate + "'' ";
             }
 
-            myQuery += @"  )a
+            myQuery += @"  ')T1
                             LEFT JOIN
                             (
                                 SELECT a.cfacility, a.ctpcode, a.cpartsnum, a.cshippernum, a.creferencenum, dshipdate, dshiptime, cshipserial, cserial
@@ -152,6 +152,8 @@ namespace EDI_API
             }
 
             myQuery += "ORDER BY cserialnumber";
+
+            Console.WriteLine(myQuery);
 
             connection.Open();
 
